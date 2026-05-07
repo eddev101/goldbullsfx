@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal — GoldBullsFX</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Top bar -->
+  <nav class="topbar">
+    <a class="logo" href="index.html">Gold<span>BullsFX</span></a>
+    <div class="nav-links">
+      <a href="index.html">Signals</a>
+      <a href="vip.html">VIP</a>
+    </div>
+  </nav>
+
+  <!-- Page content -->
+  <main class="page">
+    <a class="back-link" href="index.html">← Back to signals</a>
+
+    <!-- Detail card injected here by signal.js -->
+    <div id="detail-root">
+      <!-- Loading skeleton -->
+      <div class="skeleton" style="height:200px;border-radius:14px;"></div>
+    </div>
+  </main>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script src="js/signal.js"></script>
+
+</body>
+</html>
