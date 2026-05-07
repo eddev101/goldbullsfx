@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GoldBullsFX — Live Signals</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Top bar -->
+  <nav class="topbar">
+    <a class="logo" href="index.html">Gold<span>BullsFX</span></a>
+    <div class="nav-links">
+      <a href="index.html" class="active">Signals</a>
+      <a href="vip.html">VIP</a>
+    </div>
+  </nav>
+
+  <!-- Page content -->
+  <main class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <h1 class="page-title">Live Signals</h1>
+      <span class="live-dot">Live</span>
+    </div>
+    <p class="page-sub">XAUUSD · Auto-updated · Tap a card for full details</p>
+
+    <!-- Signal cards injected here by app.js -->
+    <div id="feed"></div>
+  </main>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- Your config (replace keys inside this file) -->
+  <script src="js/supabase-client.js"></script>
+  <!-- Feed logic -->
+  <script src="js/app.js"></script>
+
+</body>
+</html>
