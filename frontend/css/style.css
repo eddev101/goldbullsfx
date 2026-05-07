@@ -1,1 +1,378 @@
+/* ═══════════════════════════════════════════════════
+   GoldBullsFX — stylesheet
+   Aesthetic: dark luxury trading terminal
+   Fonts: DM Serif Display (headings) + DM Mono (numbers)
+═══════════════════════════════════════════════════ */
 
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+
+/* ── Variables ─────────────────────────────────── */
+:root {
+  --bg:         #0a0a0b;
+  --bg2:        #111114;
+  --bg3:        #18181d;
+  --border:     #2a2a32;
+  --gold:       #c9a84c;
+  --gold-light: #e8c96a;
+  --gold-dim:   #7a6030;
+  --green:      #2ecc71;
+  --red:        #e74c3c;
+  --text:       #e8e6e0;
+  --muted:      #7a7870;
+  --buy:        #1a3a2a;
+  --buy-border: #2ecc71;
+  --sell:       #3a1a1a;
+  --sell-border:#e74c3c;
+}
+
+/* ── Reset ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Top bar ────────────────────────────────────── */
+.topbar {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.3rem;
+  color: var(--gold);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+.logo span { color: var(--text); }
+
+.nav-links { display: flex; gap: 8px; }
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+.nav-links a:hover, .nav-links a.active {
+  color: var(--gold);
+  background: rgba(201,168,76,0.08);
+}
+
+/* ── Page wrapper ───────────────────────────────── */
+.page { max-width: 680px; margin: 0 auto; padding: 28px 16px 80px; }
+
+/* ── Page title ─────────────────────────────────── */
+.page-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.6rem;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+.page-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 24px; }
+
+/* ── Live dot ───────────────────────────────────── */
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.live-dot::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ── Signal card (home feed) ────────────────────── */
+.signal-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+  text-decoration: none;
+  display: block;
+  animation: fadeIn 0.3s ease;
+}
+.signal-card:hover {
+  border-color: var(--gold-dim);
+  transform: translateY(-1px);
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.pair-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pair {
+  font-family: 'DM Mono', monospace;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--gold);
+}
+
+.badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.badge-buy  { background: var(--buy);  color: var(--green); border: 1px solid var(--buy-border); }
+.badge-sell { background: var(--sell); color: var(--red);   border: 1px solid var(--sell-border); }
+.badge-active  { background: rgba(201,168,76,0.1); color: var(--gold);  border: 1px solid var(--gold-dim); }
+.badge-tp      { background: rgba(46,204,113,0.1); color: var(--green); border: 1px solid #2ecc71; }
+.badge-sl      { background: rgba(231,76,60,0.1);  color: var(--red);   border: 1px solid #e74c3c; }
+.badge-closed  { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+
+.card-numbers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.num-block label {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 2px;
+}
+.num-block span {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.card-footer time { font-size: 0.75rem; color: var(--muted); }
+.card-arrow { color: var(--gold-dim); font-size: 1rem; }
+
+/* ── Empty state ─────────────────────────────────── */
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+.empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.empty p { font-size: 0.9rem; }
+
+/* ── Signal detail page ─────────────────────────── */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-decoration: none;
+  margin-bottom: 20px;
+  transition: color 0.2s;
+}
+.back-link:hover { color: var(--gold); }
+
+.detail-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.detail-header {
+  background: linear-gradient(135deg, #18160f 0%, #1a1a20 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.detail-header-left h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.5rem;
+  color: var(--gold);
+  margin-bottom: 6px;
+}
+.detail-header-left .badges { display: flex; gap: 6px; }
+
+.detail-body { padding: 24px; }
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.detail-field {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.detail-field label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  margin-bottom: 4px;
+}
+.detail-field .val {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+.detail-field .val.gold { color: var(--gold); }
+.detail-field .val.green { color: var(--green); }
+.detail-field .val.red { color: var(--red); }
+
+.detail-field.wide { grid-column: 1 / -1; }
+
+.comment-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold-dim);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 24px;
+}
+.comment-box label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  display: block;
+  margin-bottom: 6px;
+}
+.comment-box p { font-size: 0.9rem; color: var(--text); line-height: 1.6; }
+
+.timestamps {
+  display: flex;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* ── VIP page ────────────────────────────────────── */
+.vip-hero {
+  text-align: center;
+  padding: 60px 20px 40px;
+}
+.vip-icon { font-size: 3rem; margin-bottom: 16px; }
+.vip-hero h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 2rem;
+  color: var(--gold);
+  margin-bottom: 10px;
+}
+.vip-hero p { color: var(--muted); max-width: 340px; margin: 0 auto 28px; }
+
+.lock-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px 24px;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.lock-card .lock-icon { font-size: 2rem; margin-bottom: 12px; }
+.lock-card h2 { font-family: 'DM Serif Display', serif; color: var(--text); margin-bottom: 8px; }
+.lock-card p { color: var(--muted); font-size: 0.88rem; }
+
+.btn-gold {
+  display: inline-block;
+  background: var(--gold);
+  color: #0a0a0b;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 12px 28px;
+  border-radius: 8px;
+  text-decoration: none;
+  margin-top: 20px;
+  transition: background 0.2s;
+}
+.btn-gold:hover { background: var(--gold-light); }
+
+/* ── Loading skeleton ───────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg2) 25%, var(--bg3) 50%, var(--bg2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 12px;
+  height: 110px;
+  margin-bottom: 12px;
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Error banner ────────────────────────────────── */
+.error-banner {
+  background: rgba(231,76,60,0.1);
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+/* ── Responsive ─────────────────────────────────── */
+@media (max-width: 480px) {
+  .card-numbers { grid-template-columns: repeat(2, 1fr); }
+  .detail-grid  { grid-template-columns: 1fr; }
+  .detail-field.wide { grid-column: 1; }
+  .timestamps { flex-direction: column; gap: 4px; }
+}
