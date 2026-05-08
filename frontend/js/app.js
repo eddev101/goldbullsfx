@@ -11,7 +11,7 @@ let livePrice = null;
 async function fetchLivePrice() {
   try {
     // Twelve Data free tier — 800 requests/day, no key needed for this endpoint
-    const res = await fetch('https://api.twelvedata.com/price?symbol=XAU/USD&apikey=demo');
+    const res = await fetch('https://api.twelvedata.com/price?symbol=XAU/USD&apikey=0ab7a6af792747898c57069dedfb347f');
     const data = await res.json();
     if (data && data.price) {
       livePrice = parseFloat(data.price);
