@@ -1,98 +1,67 @@
 /**
  * notifications.js
- * Sends push notifications via Firebase Cloud Messaging (FCM v1 API).
+ * Sends push notifications via ntfy.sh
  */
 
 require('dotenv').config();
 
-const FIREBASE_PROJECT_ID   = process.env.FIREBASE_PROJECT_ID;
-const FIREBASE_CLIENT_EMAIL = process.env.FIREBASE_CLIENT_EMAIL;
-const FIREBASE_PRIVATE_KEY  = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+const NTFY_TOPIC = process.env.NTFY_TOPIC;
+const APP_URL    = 'https://goldbullsfx.pages.dev';
 
-// ── Get OAuth2 access token from Firebase ─────────────────────────────────
-async function getAccessToken() {
-  const { GoogleAuth } = require('google-auth-library');
-  const auth = new GoogleAuth({
-    credentials: {
-      client_email: FIREBASE_CLIENT_EMAIL,
-      private_key:  FIREBASE_PRIVATE_KEY,
-    },
-    scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
-  });
-  const client = await auth.getClient();
-  const token  = await client.getAccessToken();
-  return token.token;
-}
-
-// ── Core send function ─────────────────────────────────────────────────────
-async function sendPush(title, body, path = '/') {
+async function sendPush(title, message, tags = '', path = '/') {
   try {
-    const accessToken = await getAccessToken();
-    const url = `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send`;
-
-    const res = await fetch(url, {
+    const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
       method: 'POST',
       headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${accessToken}`,
+        'Title':        title,      // plain text, no encoding
+        'Tags':         tags,
+        'Priority':     'high',
+        'Click':        `${APP_URL}${path}`,
+        'Content-Type': 'text/plain',
       },
-      body: JSON.stringify({
-        message: {
-          topic: 'signals',
-          notification: { title, body },
-          webpush: {
-            fcm_options: {
-              link: `https://goldbullsfx.pages.dev${path}`,
-            },
-          },
-          android: {
-            notification: { click_action: 'FLUTTER_NOTIFICATION_CLICK' },
-          },
-        },
-      }),
+      body: message,               // emojis go in body, not headers
     });
 
-    const data = await res.json();
-    if (data.error) {
-      console.error('FCM error:', data.error.message);
+    if (res.ok) {
+      console.log(`📲 Push sent: "${title}"`);
     } else {
-      console.log(`📲 FCM push sent: "${title}"`);
+      console.error('ntfy error:', res.status, await res.text());
     }
   } catch (err) {
-    console.error('Failed to send FCM push:', err.message);
+    console.error('Failed to send push:', err.message);
   }
 }
 
-// ── Signal notifications ───────────────────────────────────────────────────
 function notifyNewSignal(signal) {
-  const action  = signal.action === 'BUY' ? '🟢 BUY' : '🔴 SELL';
+  const action  = signal.action === 'BUY' ? 'BUY' : 'SELL';
+  const emoji   = signal.action === 'BUY' ? 'green_circle' : 'red_circle';
   const entry   = (signal.entry_high && signal.entry_low)
     ? `${signal.entry_high} - ${signal.entry_low}`
     : signal.entry_high ?? signal.entry_low ?? '-';
 
-  const title = `${action} Signal — ${signal.pair}`;
-  const body  = `Entry: ${entry} | SL: ${signal.sl ?? '-'} | TP1: ${signal.tp1 ?? '-'} | TP2: ${signal.tp2 ?? '-'}`;
-  const path  = `/signal.html?id=${signal.id}`;
+  const title   = `New ${action} Signal - ${signal.pair}`;
+  const message = `Entry: ${entry} | SL: ${signal.sl ?? '-'} | TP1: ${signal.tp1 ?? '-'} | TP2: ${signal.tp2 ?? '-'}`;
+  const path    = `/signal.html?id=${signal.id}`;
 
-  return sendPush(title, body, path);
+  return sendPush(title, message, emoji, path);
 }
 
 function notifyManual(title, message) {
-  return sendPush(title, message, '/');
+  return sendPush(title, message, 'bell', '/');
 }
 
 const TEMPLATES = {
-  tp1:   { title: '🎯 TP1 Hit! — XAUUSD',       body: 'Take Profit 1 reached. Consider securing profits.' },
-  tp2:   { title: '🎯 TP2 Hit! — XAUUSD',       body: 'Take Profit 2 reached. Full target achieved!' },
-  sl:    { title: '❌ Stop Loss Hit — XAUUSD',   body: 'Stop loss triggered. Stay disciplined.' },
-  be:    { title: '🔒 Move SL to BE — XAUUSD',  body: 'Move stop loss to breakeven to protect your position.' },
-  close: { title: '🔔 Signal Closed — XAUUSD',  body: 'Trade closed. Check the app for full results.' },
+  tp1:   { title: 'TP1 Hit - XAUUSD',      message: 'Take Profit 1 reached. Consider securing profits.',      tags: 'white_check_mark' },
+  tp2:   { title: 'TP2 Hit - XAUUSD',      message: 'Take Profit 2 reached. Full target achieved!',           tags: 'white_check_mark' },
+  sl:    { title: 'Stop Loss Hit - XAUUSD', message: 'Stop loss triggered. Stay disciplined.',                 tags: 'x' },
+  be:    { title: 'Move SL to BE - XAUUSD', message: 'Move stop loss to breakeven to protect your position.', tags: 'lock' },
+  close: { title: 'Signal Closed - XAUUSD', message: 'Trade closed. Check the app for full results.',         tags: 'bell' },
 };
 
 function notifyTemplate(templateKey) {
   const t = TEMPLATES[templateKey];
   if (!t) return;
-  return sendPush(t.title, t.body, '/');
+  return sendPush(t.title, t.message, t.tags, '/');
 }
 
 module.exports = { notifyNewSignal, notifyManual, notifyTemplate, TEMPLATES };
