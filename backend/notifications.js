@@ -17,7 +17,7 @@ async function sendPush(title, message, url = '/') {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Key ${ONESIGNAL_API_KEY}`, // v2 uses "Key" not "Basic"
+        'Authorization': `Bearer ${ONESIGNAL_API_KEY}`, // v2 org key uses Bearer
       },
       body: JSON.stringify({
         app_id:            ONESIGNAL_APP_ID,
