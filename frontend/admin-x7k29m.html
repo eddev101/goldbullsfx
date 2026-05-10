@@ -270,6 +270,7 @@
     <div class="tabs">
       <div class="tab active" data-tab="signals">All Signals</div>
       <div class="tab" data-tab="add">Add Signal</div>
+      <div class="tab" data-tab="notify">🔔 Notify</div>
     </div>
 
     <!-- Tab: All Signals -->
@@ -346,6 +347,44 @@
           <button class="btn btn-secondary" onclick="clearAddForm()">Clear</button>
         </div>
       </div>
+    </div>
+
+    <!-- Tab: Notifications -->
+    <div class="tab-panel" id="tab-notify">
+
+      <!-- Quick templates -->
+      <div class="form-card">
+        <h2>Quick Notifications</h2>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px;">
+          One tap — sends instantly to all app users.
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button class="btn btn-secondary" onclick="sendTemplate('tp1')">🎯 TP1 Hit</button>
+          <button class="btn btn-secondary" onclick="sendTemplate('tp2')">🎯 TP2 Hit</button>
+          <button class="btn btn-danger"    onclick="sendTemplate('sl')">❌ SL Hit</button>
+          <button class="btn btn-secondary" onclick="sendTemplate('be')">🔒 Move SL to BE</button>
+          <button class="btn btn-secondary" onclick="sendTemplate('close')" style="grid-column:1/-1">🔔 Signal Closed</button>
+        </div>
+      </div>
+
+      <!-- Custom notification -->
+      <div class="form-card">
+        <h2>Custom Notification</h2>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Title</label>
+            <input type="text" id="notif-title" placeholder="e.g. 🔔 Trade Update" maxlength="60" />
+          </div>
+          <div class="form-group full">
+            <label>Message</label>
+            <textarea id="notif-message" placeholder="e.g. Move SL to 4710 to lock in profits..." style="min-height:80px;"></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="sendCustom()">Send Notification</button>
+        </div>
+      </div>
+
     </div>
 
   </main>
@@ -618,6 +657,40 @@
     document.getElementById('edit-modal').addEventListener('click', function(e) {
       if (e.target === this) closeModal();
     });
+
+    // ── Notifications ─────────────────────────────────────────────────────
+    // Replace this with your actual Railway backend URL
+    const BACKEND_URL = 'https://your-railway-app.railway.app';
+
+    async function callNotifyAPI(body) {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/notify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Unknown error');
+        toast('📲 Notification sent!');
+      } catch (err) {
+        toast(`Error: ${err.message}`, 'error');
+      }
+    }
+
+    async function sendTemplate(key) {
+      if (!confirm(`Send "${key.toUpperCase()}" notification to all users?`)) return;
+      await callNotifyAPI({ type: 'template', key, pair: 'XAUUSD' });
+    }
+
+    async function sendCustom() {
+      const title   = document.getElementById('notif-title').value.trim();
+      const message = document.getElementById('notif-message').value.trim();
+      if (!title || !message) { toast('Fill in title and message', 'error'); return; }
+      if (!confirm(`Send to all users?\n\n"${title}"\n${message}`)) return;
+      await callNotifyAPI({ type: 'custom', title, message });
+      document.getElementById('notif-title').value   = '';
+      document.getElementById('notif-message').value = '';
+    }
 
     // ── Init ──────────────────────────────────────────────────────────────
     loadSignals();
