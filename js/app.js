@@ -1,231 +1,722 @@
-/**
- * app.js — Home feed logic
- * Fetches all signals newest-first, renders cards, subscribes to realtime inserts.
- * Auto-updates timestamps every minute.
- * Fetches live XAUUSD price to auto-detect Waiting/Active/TP/SL status.
- */
-
-// ── Live price ─────────────────────────────────────────────────────────────
-let livePrice = null;
-
-async function fetchLivePrice() {
-  try {
-    // Twelve Data free tier — 800 requests/day, no key needed for this endpoint
-    const res = await fetch('https://api.twelvedata.com/price?symbol=XAU/USD&apikey=0ab7a6af792747898c57069dedfb347f');
-    const data = await res.json();
-    if (data && data.price) {
-      livePrice = parseFloat(data.price);
-      const el = document.getElementById('live-price');
-      if (el) el.textContent = `XAU/USD $${livePrice.toFixed(2)}`;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — GoldBullsFX</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* ── Admin-specific styles ── */
+    .admin-header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-  } catch (e) {
-    // Silently fail — price display just won't show
-  }
-}
+    .admin-header h1 {
+      font-family: 'DM Serif Display', serif;
+      color: var(--gold);
+      font-size: 1.2rem;
+    }
+    .admin-header span {
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: rgba(201,168,76,0.1);
+      border: 1px solid var(--gold-dim);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
 
-// ── Auto status from live price ────────────────────────────────────────────
-function computeStatus(signal) {
-  // If already closed/resolved, keep it
-  if (['TP1 Hit', 'TP2 Hit', 'SL Hit', 'Closed'].includes(signal.status)) {
-    return signal.status;
-  }
-  if (livePrice === null) return signal.status;
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0;
+    }
+    .tab {
+      padding: 10px 18px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.2s;
+    }
+    .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .tab:hover  { color: var(--text); }
 
-  const price = livePrice;
-  const isBuy = signal.action === 'BUY';
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
 
-  // SL hit
-  if (isBuy  && price <= signal.sl) return 'SL Hit';
-  if (!isBuy && price >= signal.sl) return 'SL Hit';
+    /* ── Form ── */
+    .form-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .form-card h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.1rem;
+      color: var(--text);
+      margin-bottom: 18px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--gold-dim);
+    }
+    .form-group select option { background: var(--bg3); }
+    .form-group textarea { resize: vertical; min-height: 80px; font-family: 'DM Sans', sans-serif; }
 
-  // TP2 hit
-  if (signal.tp2) {
-    if (isBuy  && price >= signal.tp2) return 'TP2 Hit';
-    if (!isBuy && price <= signal.tp2) return 'TP2 Hit';
-  }
+    .form-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
-  // TP1 hit
-  if (signal.tp1) {
-    if (isBuy  && price >= signal.tp1) return 'TP1 Hit';
-    if (!isBuy && price <= signal.tp1) return 'TP1 Hit';
-  }
+    .btn {
+      padding: 10px 22px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--gold); color: #0a0a0b; }
+    .btn-primary:hover { background: var(--gold-light); }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--gold-dim); }
+    .btn-danger { background: rgba(231,76,60,0.15); color: #e74c3c; border: 1px solid #e74c3c; }
+    .btn-danger:hover { background: rgba(231,76,60,0.25); }
+    .btn-sm { padding: 6px 14px; font-size: 0.78rem; }
 
-  // Price inside entry range = Active
-  if (signal.entry_high && signal.entry_low) {
-    if (price <= signal.entry_high && price >= signal.entry_low) return 'Active';
-  }
+    /* ── Signal list (admin) ── */
+    .admin-signal-row {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .admin-signal-row:hover { border-color: var(--gold-dim); }
 
-  // Price hasn't reached entry yet = Waiting
-  if (isBuy  && price < signal.entry_low)  return 'Waiting';
-  if (!isBuy && price > signal.entry_high) return 'Waiting';
+    .row-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .row-meta { font-size: 0.78rem; color: var(--muted); }
+    .row-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
-  return 'Active';
-}
+    /* ── Toast notification ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      z-index: 999;
+      transition: transform 0.3s ease;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.success { border-color: var(--green); color: var(--green); }
+    #toast.error   { border-color: #e74c3c; color: #e74c3c; }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-function statusBadge(status) {
-  const map = {
-    'Waiting': 'badge-waiting',
-    'Active':  'badge-active',
-    'TP1 Hit': 'badge-tp',
-    'TP2 Hit': 'badge-tp',
-    'SL Hit':  'badge-sl',
-    'Closed':  'badge-closed',
-  };
-  return `<span class="badge ${map[status] || 'badge-closed'}">${status}</span>`;
-}
+    /* ── Edit modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      width: 100%;
+      max-width: 520px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-header h2 {
+      font-family: 'DM Serif Display', serif;
+      color: var(--gold);
+      font-size: 1.1rem;
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.3rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
 
-function actionBadge(action) {
-  return `<span class="badge ${action === 'BUY' ? 'badge-buy' : 'badge-sell'}">${action}</span>`;
-}
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .stat-card .stat-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 1.4rem;
+      color: var(--gold);
+      display: block;
+    }
+    .stat-card .stat-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
 
-function timeAgo(dateStr) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1)  return 'Just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
+    @media (max-width: 480px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .admin-signal-row { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
 
-function fmt(val) { return val != null ? val : '—'; }
+  <div class="admin-header">
+    <h1>⚙️ GoldBullsFX Admin</h1>
+    <span>🔒 Private</span>
+  </div>
 
-function renderCard(signal) {
-  const entryStr = (signal.entry_high != null && signal.entry_low != null)
-    ? `${signal.entry_high} – ${signal.entry_low}`
-    : fmt(signal.entry_high ?? signal.entry_low);
+  <main class="page">
 
-  const displayStatus = computeStatus(signal);
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <span class="stat-val" id="stat-total">—</span>
+        <span class="stat-label">Total</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val" id="stat-active" style="color:var(--gold)">—</span>
+        <span class="stat-label">Active</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val" id="stat-wins" style="color:var(--green)">—</span>
+        <span class="stat-label">Wins</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val" id="stat-losses" style="color:var(--red)">—</span>
+        <span class="stat-label">Losses</span>
+      </div>
+    </div>
 
-  return `
-    <a class="signal-card" href="signal.html?id=${signal.id}" data-id="${signal.id}">
-      <div class="card-top">
-        <div class="pair-action">
-          <span class="pair">${signal.pair}</span>
-          ${actionBadge(signal.action)}
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" data-tab="signals">All Signals</div>
+      <div class="tab" data-tab="add">Add Signal</div>
+      <div class="tab" data-tab="notify">🔔 Notify</div>
+    </div>
+
+    <!-- Tab: All Signals -->
+    <div class="tab-panel active" id="tab-signals">
+      <div id="admin-feed">
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+        <div class="skeleton"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Add Signal -->
+    <div class="tab-panel" id="tab-add">
+      <div class="form-card">
+        <h2>Add Signal Manually</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Action</label>
+            <select id="add-action">
+              <option value="BUY">BUY</option>
+              <option value="SELL">SELL</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="add-status">
+              <option value="Waiting">Waiting</option>
+              <option value="Active">Active</option>
+              <option value="TP1 Hit">TP1 Hit</option>
+              <option value="TP2 Hit">TP2 Hit</option>
+              <option value="SL Hit">SL Hit</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Entry High</label>
+            <input type="number" id="add-entry-high" placeholder="e.g. 4714" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Entry Low</label>
+            <input type="number" id="add-entry-low" placeholder="e.g. 4711" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Stop Loss</label>
+            <input type="number" id="add-sl" placeholder="e.g. 4707" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Take Profit 1</label>
+            <input type="number" id="add-tp1" placeholder="e.g. 4718" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Take Profit 2</label>
+            <input type="number" id="add-tp2" placeholder="e.g. 4738" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Result</label>
+            <select id="add-result">
+              <option value="">— None —</option>
+              <option value="Win">Win</option>
+              <option value="Loss">Loss</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Profit/Loss (pips)</label>
+            <input type="number" id="add-pl" placeholder="e.g. 80 or -30" step="0.1" />
+          </div>
+          <div class="form-group full">
+            <label>Comment / Analysis</label>
+            <textarea id="add-comment" placeholder="Optional analysis or notes..."></textarea>
+          </div>
         </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          ${statusBadge(displayStatus)}
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="addSignal()">Add Signal</button>
+          <button class="btn btn-secondary" onclick="clearAddForm()">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Notifications -->
+    <div class="tab-panel" id="tab-notify">
+
+      <!-- Quick templates -->
+      <div class="form-card">
+        <h2>Quick Notifications</h2>
+        <p style="color:var(--muted);font-size:0.85rem;margin-bottom:16px;">
+          One tap — sends instantly to all app users.
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button class="btn btn-secondary" onclick="sendTemplate('tp1')">🎯 TP1 Hit</button>
+          <button class="btn btn-secondary" onclick="sendTemplate('tp2')">🎯 TP2 Hit</button>
+          <button class="btn btn-danger"    onclick="sendTemplate('sl')">❌ SL Hit</button>
+          <button class="btn btn-secondary" onclick="sendTemplate('be')">🔒 Move SL to BE</button>
+          <button class="btn btn-secondary" onclick="sendTemplate('close')" style="grid-column:1/-1">🔔 Signal Closed</button>
         </div>
       </div>
 
-      <div class="card-numbers">
-        <div class="num-block">
-          <label>Entry</label>
-          <span>${entryStr}</span>
+      <!-- Custom notification -->
+      <div class="form-card">
+        <h2>Custom Notification</h2>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Title</label>
+            <input type="text" id="notif-title" placeholder="e.g. 🔔 Trade Update" maxlength="60" />
+          </div>
+          <div class="form-group full">
+            <label>Message</label>
+            <textarea id="notif-message" placeholder="e.g. Move SL to 4710 to lock in profits..." style="min-height:80px;"></textarea>
+          </div>
         </div>
-        <div class="num-block">
-          <label>SL</label>
-          <span>${fmt(signal.sl)}</span>
-        </div>
-        <div class="num-block">
-          <label>TP1</label>
-          <span>${fmt(signal.tp1)}</span>
-        </div>
-        <div class="num-block">
-          <label>TP2</label>
-          <span>${fmt(signal.tp2)}</span>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="sendCustom()">Send Notification</button>
         </div>
       </div>
 
-      <div class="card-footer">
-        <time data-ts="${signal.created_at}">${timeAgo(signal.created_at)}</time>
-        <span class="card-arrow">→</span>
+    </div>
+
+  </main>
+
+  <!-- Edit Modal -->
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Edit Signal</h2>
+        <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
-    </a>
-  `;
-}
-
-// ── Refresh timestamps every 60s (no reload needed) ───────────────────────
-function refreshTimestamps() {
-  document.querySelectorAll('time[data-ts]').forEach(el => {
-    el.textContent = timeAgo(el.dataset.ts);
-  });
-}
-
-// ── Main ───────────────────────────────────────────────────────────────────
-const feed = document.getElementById('feed');
-let allSignals = [];
-
-async function loadSignals() {
-  feed.innerHTML = `
-    <div class="skeleton"></div>
-    <div class="skeleton"></div>
-    <div class="skeleton"></div>
-  `;
-
-  const { data, error } = await sb
-    .from('signals')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    feed.innerHTML = `<div class="error-banner">Failed to load signals: ${error.message}</div>`;
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    feed.innerHTML = `
-      <div class="empty">
-        <div class="empty-icon">📭</div>
-        <p>No signals yet. Forward a signal to the bot to get started.</p>
+      <div class="form-grid">
+        <input type="hidden" id="edit-id" />
+        <div class="form-group">
+          <label>Action</label>
+          <select id="edit-action">
+            <option value="BUY">BUY</option>
+            <option value="SELL">SELL</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="edit-status">
+            <option value="Waiting">Waiting</option>
+            <option value="Active">Active</option>
+            <option value="TP1 Hit">TP1 Hit</option>
+            <option value="TP2 Hit">TP2 Hit</option>
+            <option value="SL Hit">SL Hit</option>
+            <option value="Closed">Closed</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Entry High</label>
+          <input type="number" id="edit-entry-high" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label>Entry Low</label>
+          <input type="number" id="edit-entry-low" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label>Stop Loss</label>
+          <input type="number" id="edit-sl" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label>Take Profit 1</label>
+          <input type="number" id="edit-tp1" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label>Take Profit 2</label>
+          <input type="number" id="edit-tp2" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label>Result</label>
+          <select id="edit-result">
+            <option value="">— None —</option>
+            <option value="Win">Win</option>
+            <option value="Loss">Loss</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Profit/Loss (pips)</label>
+          <input type="number" id="edit-pl" step="0.1" />
+        </div>
+        <div class="form-group full">
+          <label>Comment / Analysis</label>
+          <textarea id="edit-comment"></textarea>
+        </div>
       </div>
-    `;
-    return;
-  }
+      <div class="form-actions" style="margin-top:16px;">
+        <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
 
-  allSignals = data;
-  feed.innerHTML = data.map(renderCard).join('');
-}
+  <!-- Toast -->
+  <div id="toast"></div>
 
-// Re-render status badges when price updates
-function refreshStatusBadges() {
-  allSignals.forEach(signal => {
-    const card = document.querySelector(`[data-id="${signal.id}"]`);
-    if (!card) return;
-    const badgeEl = card.querySelector('.badge:last-child');
-    if (!badgeEl) return;
-    const newStatus = computeStatus(signal);
-    const map = {
-      'Waiting': 'badge-waiting',
-      'Active':  'badge-active',
-      'TP1 Hit': 'badge-tp',
-      'TP2 Hit': 'badge-tp',
-      'SL Hit':  'badge-sl',
-      'Closed':  'badge-closed',
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script>
+
+    // ── Toast ──────────────────────────────────────────────────────────────
+    function toast(msg, type = 'success') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `show ${type}`;
+      setTimeout(() => { el.className = ''; }, 3000);
+    }
+
+    // ── Tabs ──────────────────────────────────────────────────────────────
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+      });
+    });
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function statusBadge(status) {
+      const map = {
+        'Waiting': 'badge-waiting',
+        'Active':  'badge-active',
+        'TP1 Hit': 'badge-tp',
+        'TP2 Hit': 'badge-tp',
+        'SL Hit':  'badge-sl',
+        'Closed':  'badge-closed',
+      };
+      return `<span class="badge ${map[status] || 'badge-closed'}">${status}</span>`;
+    }
+
+    function fmt(val) { return val != null ? val : '—'; }
+
+    function formatDate(str) {
+      if (!str) return '—';
+      return new Date(str).toLocaleString('en-GB', {
+        day: '2-digit', month: 'short',
+        hour: '2-digit', minute: '2-digit',
+      });
+    }
+
+    // ── Load all signals ──────────────────────────────────────────────────
+    let signals = [];
+
+    async function loadSignals() {
+      const { data, error } = await sb
+        .from('signals')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        document.getElementById('admin-feed').innerHTML =
+          `<div class="error-banner">Failed to load: ${error.message}</div>`;
+        return;
+      }
+
+      signals = data || [];
+      renderAdminFeed();
+      updateStats();
+    }
+
+    function renderAdminFeed() {
+      const feed = document.getElementById('admin-feed');
+      if (!signals.length) {
+        feed.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><p>No signals yet.</p></div>';
+        return;
+      }
+      feed.innerHTML = signals.map(s => `
+        <div class="admin-signal-row">
+          <div class="row-left">
+            <span class="pair" style="font-family:'DM Mono',monospace;color:var(--gold)">${s.pair}</span>
+            <span class="badge ${s.action === 'BUY' ? 'badge-buy' : 'badge-sell'}">${s.action}</span>
+            ${statusBadge(s.status)}
+            <span class="row-meta">${fmt(s.entry_high)} – ${fmt(s.entry_low)} | SL ${fmt(s.sl)} | TP1 ${fmt(s.tp1)} | TP2 ${fmt(s.tp2)}</span>
+            <span class="row-meta">${formatDate(s.created_at)}</span>
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-secondary btn-sm" onclick="openEdit('${s.id}')">✏️ Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteSignal('${s.id}')">🗑 Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateStats() {
+      document.getElementById('stat-total').textContent   = signals.length;
+      document.getElementById('stat-active').textContent  = signals.filter(s => s.status === 'Active' || s.status === 'Waiting').length;
+      document.getElementById('stat-wins').textContent    = signals.filter(s => s.result === 'Win').length;
+      document.getElementById('stat-losses').textContent  = signals.filter(s => s.result === 'Loss').length;
+    }
+
+    // ── Add signal ────────────────────────────────────────────────────────
+    async function addSignal() {
+      const payload = {
+        pair:        'XAUUSD',
+        action:      document.getElementById('add-action').value,
+        status:      document.getElementById('add-status').value,
+        entry_high:  parseFloat(document.getElementById('add-entry-high').value) || null,
+        entry_low:   parseFloat(document.getElementById('add-entry-low').value)  || null,
+        sl:          parseFloat(document.getElementById('add-sl').value)          || null,
+        tp1:         parseFloat(document.getElementById('add-tp1').value)         || null,
+        tp2:         parseFloat(document.getElementById('add-tp2').value)         || null,
+        result:      document.getElementById('add-result').value                  || null,
+        profit_loss: parseFloat(document.getElementById('add-pl').value)          || null,
+        comment:     document.getElementById('add-comment').value.trim()          || null,
+      };
+
+      const { error } = await sb.from('signals').insert([payload]);
+      if (error) { toast(`Error: ${error.message}`, 'error'); return; }
+
+      toast('✅ Signal added!');
+      clearAddForm();
+      loadSignals();
+
+      // Switch to signals tab
+      document.querySelector('[data-tab="signals"]').click();
+    }
+
+    function clearAddForm() {
+      ['add-entry-high','add-entry-low','add-sl','add-tp1','add-tp2','add-pl','add-comment']
+        .forEach(id => document.getElementById(id).value = '');
+      document.getElementById('add-action').value = 'BUY';
+      document.getElementById('add-status').value = 'Waiting';
+      document.getElementById('add-result').value = '';
+    }
+
+    // ── Edit signal ───────────────────────────────────────────────────────
+    function openEdit(id) {
+      const s = signals.find(x => x.id === id);
+      if (!s) return;
+
+      document.getElementById('edit-id').value          = s.id;
+      document.getElementById('edit-action').value      = s.action;
+      document.getElementById('edit-status').value      = s.status;
+      document.getElementById('edit-entry-high').value  = s.entry_high ?? '';
+      document.getElementById('edit-entry-low').value   = s.entry_low  ?? '';
+      document.getElementById('edit-sl').value          = s.sl          ?? '';
+      document.getElementById('edit-tp1').value         = s.tp1         ?? '';
+      document.getElementById('edit-tp2').value         = s.tp2         ?? '';
+      document.getElementById('edit-result').value      = s.result      ?? '';
+      document.getElementById('edit-pl').value          = s.profit_loss ?? '';
+      document.getElementById('edit-comment').value     = s.comment     ?? '';
+
+      document.getElementById('edit-modal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('edit-modal').classList.remove('open');
+    }
+
+    async function saveEdit() {
+      const id = document.getElementById('edit-id').value;
+      const updates = {
+        action:      document.getElementById('edit-action').value,
+        status:      document.getElementById('edit-status').value,
+        entry_high:  parseFloat(document.getElementById('edit-entry-high').value) || null,
+        entry_low:   parseFloat(document.getElementById('edit-entry-low').value)  || null,
+        sl:          parseFloat(document.getElementById('edit-sl').value)          || null,
+        tp1:         parseFloat(document.getElementById('edit-tp1').value)         || null,
+        tp2:         parseFloat(document.getElementById('edit-tp2').value)         || null,
+        result:      document.getElementById('edit-result').value                  || null,
+        profit_loss: parseFloat(document.getElementById('edit-pl').value)          || null,
+        comment:     document.getElementById('edit-comment').value.trim()          || null,
+        updated_at:  new Date().toISOString(),
+      };
+
+      const { error } = await sb.from('signals').update(updates).eq('id', id);
+      if (error) { toast(`Error: ${error.message}`, 'error'); return; }
+
+      toast('✅ Signal updated!');
+      closeModal();
+      loadSignals();
+    }
+
+    // ── Delete signal ─────────────────────────────────────────────────────
+    async function deleteSignal(id) {
+      if (!confirm('Delete this signal? This cannot be undone.')) return;
+
+      const { error } = await sb.from('signals').delete().eq('id', id);
+      if (error) { toast(`Error: ${error.message}`, 'error'); return; }
+
+      toast('🗑 Signal deleted');
+      loadSignals();
+    }
+
+    // ── Close modal on overlay click ──────────────────────────────────────
+    document.getElementById('edit-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    // ── Notifications ─────────────────────────────────────────────────────
+    const ONESIGNAL_APP_ID  = '0205ff57-e1f0-43e5-a7ad-5f4256f463c8';
+    const ONESIGNAL_API_KEY = 'os_v2_org_zk5zynj43ze7teh7pe2hi4iws7t2j7xi2grulbuicuw2fa2qtl2jhjlo3hjx6yxokm5qrmvqwz72khjep27cf6trzcf62fscuhqfrly';
+
+    async function sendPush(title, message) {
+      try {
+        const res = await fetch('https://api.onesignal.com/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${ONESIGNAL_API_KEY}`,
+          },
+          body: JSON.stringify({
+            app_id:            ONESIGNAL_APP_ID,
+            target_channel:    'push',
+            included_segments: ['All'],
+            headings:          { en: title },
+            contents:          { en: message },
+          }),
+        });
+        const data = await res.json();
+        if (data.errors) {
+          toast(`OneSignal error: ${data.errors[0]}`, 'error');
+        } else {
+          toast(`📲 Sent to ${data.recipients} users!`);
+        }
+      } catch (err) {
+        toast(`Error: ${err.message}`, 'error');
+      }
+    }
+
+    const TEMPLATES = {
+      tp1:  { title: '🎯 TP1 Hit! — XAUUSD',     message: 'Take Profit 1 reached. Consider securing profits.' },
+      tp2:  { title: '🎯 TP2 Hit! — XAUUSD',     message: 'Take Profit 2 reached. Full target achieved!' },
+      sl:   { title: '❌ Stop Loss Hit — XAUUSD', message: 'Stop loss triggered. Stay disciplined.' },
+      be:   { title: '🔒 Move SL to BE — XAUUSD',message: 'Move stop loss to breakeven to protect position.' },
+      close:{ title: '🔔 Signal Closed — XAUUSD', message: 'Trade closed. Check the app for results.' },
     };
-    badgeEl.className = `badge ${map[newStatus] || 'badge-closed'}`;
-    badgeEl.textContent = newStatus;
-  });
-}
 
-// ── Realtime: new signals pop in instantly ────────────────────────────────
-sb.channel('signals-feed')
-  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signals' }, (payload) => {
-    allSignals.unshift(payload.new);
-    const newCard = document.createElement('div');
-    newCard.innerHTML = renderCard(payload.new);
-    const card = newCard.firstElementChild;
+    async function sendTemplate(key) {
+      const t = TEMPLATES[key];
+      if (!t) return;
+      if (!confirm(`Send "${t.title}" to all users?`)) return;
+      await sendPush(t.title, t.message);
+    }
 
-    const empty = feed.querySelector('.empty');
-    if (empty) feed.innerHTML = '';
+    async function sendCustom() {
+      const title   = document.getElementById('notif-title').value.trim();
+      const message = document.getElementById('notif-message').value.trim();
+      if (!title || !message) { toast('Fill in title and message', 'error'); return; }
+      if (!confirm(`Send to all users?\n\n"${title}"\n${message}`)) return;
+      await sendPush(title, message);
+      document.getElementById('notif-title').value   = '';
+      document.getElementById('notif-message').value = '';
+    }
 
-    card.style.borderColor = 'var(--gold)';
-    feed.prepend(card);
-    setTimeout(() => { card.style.borderColor = ''; }, 2000);
-  })
-  .subscribe();
+    // ── Init ──────────────────────────────────────────────────────────────
+    loadSignals();
 
-// ── Kick everything off ───────────────────────────────────────────────────
-fetchLivePrice();
-loadSignals();
-
-// Refresh timestamps every 60 seconds
-setInterval(refreshTimestamps, 60000);
-
-// Refresh price + status badges every 30 seconds
-setInterval(async () => {
-  await fetchLivePrice();
-  refreshStatusBadges();
-}, 30000);
+  </script>
+</body>
+</html>
