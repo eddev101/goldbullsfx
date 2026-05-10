@@ -43,12 +43,44 @@
     <div id="feed"></div>
   </main>
 
-   <!-- Footer -->
+  <!-- Footer -->
   <footer style="text-align:center;padding:24px 16px 40px;font-size:0.75rem;color:#7a7870;">
+    <a href="ntfy://goldbullsfx-x7k29m" id="notif-btn" style="
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background:rgba(201,168,76,0.1);
+      border:1px solid #c9a84c;
+      color:#c9a84c;
+      padding:10px 20px;
+      border-radius:8px;
+      text-decoration:none;
+      font-size:0.85rem;
+      font-weight:600;
+      margin-bottom:16px;
+    ">🔔 Enable Signal Notifications</a>
+    <br/>
+    <span style="font-size:0.72rem;color:#555;display:block;margin-bottom:12px;">
+      Tap above · Install <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" style="color:#7a7870;text-decoration:underline;">Ntfy app</a> if prompted · Get alerts instantly
+    </span>
     GoldBullsFX &nbsp;·&nbsp;
     <a href="privacy.html" style="color:#7a7870;text-decoration:underline;">Privacy Policy</a>
     &nbsp;·&nbsp; For informational purposes only. Not financial advice.
   </footer>
+
+  <script>
+    // If ntfy app not installed, fall back to browser subscription page
+    const btn = document.getElementById('notif-btn');
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      // Try to open ntfy app directly
+      window.location = 'ntfy://goldbullsfx-x7k29m';
+      // After 1.5s if app didn't open, go to web subscribe page
+      setTimeout(() => {
+        window.location = 'https://ntfy.sh/goldbullsfx-x7k29m';
+      }, 1500);
+    });
+  </script>
 
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
