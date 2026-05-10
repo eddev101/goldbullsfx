@@ -89,5 +89,15 @@
   <!-- Feed logic -->
   <script src="js/app.js"></script>
 
+  <script>
+  // Handle Android back button — go back instead of closing app
+  document.addEventListener('backbutton', function(e) {
+    e.preventDefault();
+    if (window.history.length > 1) {
+      window.history.back();
+    }
+  }, false);
+</script>
+
 </body>
 </html>
