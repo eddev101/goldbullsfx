@@ -3,8 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>GoldBullsFX — Live Signals</title>
   <link rel="stylesheet" href="css/style.css" />
+  <!-- OneSignal Push Notifications -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.init({
+        appId: "0205ff57-e1f0-43e5-a7ad-5f4256f463c8",   // ← replace with your App ID
+        notifyButton: { enable: true },    // floating bell icon for users to subscribe
+      });
+    });
+  </script>
 </head>
 <body>
 
@@ -28,6 +42,13 @@
     <!-- Signal cards injected here by app.js -->
     <div id="feed"></div>
   </main>
+
+   <!-- Footer -->
+  <footer style="text-align:center;padding:24px 16px 40px;font-size:0.75rem;color:#7a7870;">
+    GoldBullsFX &nbsp;·&nbsp;
+    <a href="privacy.html" style="color:#7a7870;text-decoration:underline;">Privacy Policy</a>
+    &nbsp;·&nbsp; For informational purposes only. Not financial advice.
+  </footer>
 
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
