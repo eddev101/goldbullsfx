@@ -169,7 +169,7 @@ async function loadSignals() {
     feed.innerHTML = `
       <div class="empty">
         <div class="empty-icon">📭</div>
-        <p>No signals yet. Forward a signal to the bot to get started.</p>
+        <p>No signals yet.</p>
       </div>
     `;
     return;
