@@ -1,81 +1,61 @@
 /**
  * notifications.js
- * Sends push notifications via OneSignal REST API v2.
+ * Sends push notifications via ntfy.sh — no API key, no IP issues.
  */
 
 require('dotenv').config();
 
-const ONESIGNAL_APP_ID  = process.env.ONESIGNAL_APP_ID;
-const ONESIGNAL_API_KEY = process.env.ONESIGNAL_API_KEY; // os_v2_org_... key
+const NTFY_TOPIC = process.env.NTFY_TOPIC; // e.g. goldbullsfx-x7k29m
 
-/**
- * Core send function — sends to all subscribed users.
- */
-async function sendPush(title, message, url = '/') {
+async function sendPush(title, message, tags = '') {
   try {
-    const res = await fetch('https://api.onesignal.com/notifications', {
+    const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ONESIGNAL_API_KEY}`, // v2 org key uses Bearer
+        'Title':        title,
+        'Tags':         tags,
+        'Priority':     'high',
+        'Content-Type': 'text/plain',
       },
-      body: JSON.stringify({
-        app_id:            ONESIGNAL_APP_ID,
-        target_channel:    'push',
-        included_segments: ['All'],
-        headings:          { en: title },
-        contents:          { en: message },
-        url,
-        priority:          10,
-      }),
+      body: message,
     });
-
-    const data = await res.json();
-    if (data.errors) {
-      console.error('OneSignal error:', data.errors);
+    if (res.ok) {
+      console.log(`📲 Push sent: "${title}"`);
     } else {
-      console.log(`📲 Push sent: "${title}" → ${data.recipients} recipients`);
+      console.error('ntfy error:', res.status, await res.text());
     }
   } catch (err) {
-    console.error('Failed to send push notification:', err.message);
+    console.error('Failed to send push:', err.message);
   }
 }
 
-/**
- * Auto-called when bot saves a new signal.
- */
 function notifyNewSignal(signal) {
-  const action = signal.action === 'BUY' ? '🟢 BUY' : '🔴 SELL';
-  const entry  = (signal.entry_high && signal.entry_low)
+  const action  = signal.action === 'BUY' ? '🟢 BUY' : '🔴 SELL';
+  const entry   = (signal.entry_high && signal.entry_low)
     ? `${signal.entry_high} – ${signal.entry_low}`
     : signal.entry_high ?? signal.entry_low ?? '—';
-
   const title   = `${action} Signal — ${signal.pair}`;
   const message = `Entry: ${entry} | SL: ${signal.sl ?? '—'} | TP1: ${signal.tp1 ?? '—'} | TP2: ${signal.tp2 ?? '—'}`;
-
-  return sendPush(title, message, '/');
+  const tags    = signal.action === 'BUY' ? 'green_circle' : 'red_circle';
+  return sendPush(title, message, tags);
 }
 
-/**
- * Manual notification from admin panel.
- */
 function notifyManual(title, message) {
-  return sendPush(title, message, '/');
+  return sendPush(title, message, 'bell');
 }
 
-// ── Pre-built update templates ─────────────────────────────────────────────
 const TEMPLATES = {
-  tp1:  { title: '🎯 TP1 Hit!',      message: 'Take Profit 1 has been reached. Consider securing profits.' },
-  tp2:  { title: '🎯 TP2 Hit!',      message: 'Take Profit 2 has been reached. Full target achieved!' },
-  sl:   { title: '❌ Stop Loss Hit',  message: 'Stop loss has been triggered. Stay disciplined.' },
-  be:   { title: '🔒 Move SL to BE', message: 'Move your stop loss to breakeven to protect your position.' },
-  close:{ title: '🔔 Signal Closed', message: 'This trade has been closed. Check the app for full results.' },
+  tp1:   { title: '🎯 TP1 Hit! — XAUUSD',      message: 'Take Profit 1 reached. Consider securing profits.',     tags: 'white_check_mark' },
+  tp2:   { title: '🎯 TP2 Hit! — XAUUSD',      message: 'Take Profit 2 reached. Full target achieved!',          tags: 'white_check_mark' },
+  sl:    { title: '❌ Stop Loss Hit — XAUUSD',  message: 'Stop loss triggered. Stay disciplined.',                tags: 'x' },
+  be:    { title: '🔒 Move SL to BE — XAUUSD', message: 'Move stop loss to breakeven to protect your position.', tags: 'lock' },
+  close: { title: '🔔 Signal Closed — XAUUSD', message: 'Trade closed. Check the app for full results.',         tags: 'bell' },
 };
 
-function notifyTemplate(templateKey, pair = 'XAUUSD') {
+function notifyTemplate(templateKey) {
   const t = TEMPLATES[templateKey];
   if (!t) return;
-  return sendPush(`${t.title} — ${pair}`, t.message, '/');
+  return sendPush(t.title, t.message, t.tags);
 }
 
 module.exports = { notifyNewSignal, notifyManual, notifyTemplate, TEMPLATES };
