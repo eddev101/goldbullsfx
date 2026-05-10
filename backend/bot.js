@@ -14,6 +14,7 @@ require('dotenv').config();
 const { Bot } = require('grammy');
 const { parseSignal } = require('./parser');
 const { insertSignal } = require('./supabase');
+const { notifyNewSignal } = require('./notifications');
 
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN);
 
@@ -35,6 +36,10 @@ bot.on('message', async (ctx) => {
 
   try {
     const saved = await insertSignal(signal);
+
+    // 🔔 Push notification to all app users
+    notifyNewSignal(saved);
+
     await ctx.reply(
       `✅ Signal saved!\n\n` +
       `📊 *${saved.pair} ${saved.action}*\n` +
