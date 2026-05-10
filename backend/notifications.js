@@ -5,11 +5,11 @@
 
 require('dotenv').config();
 
-const NTFY_TOPIC = process.env.NTFY_TOPIC;
+const NTFY_TOPIC  = process.env.NTFY_TOPIC;
+const APP_URL     = 'https://goldbullsfx.pages.dev'; // your Cloudflare Pages URL
 
-async function sendPush(title, message, tags = '') {
+async function sendPush(title, message, tags = '', path = '/') {
   try {
-    // Encode title to handle emojis in headers
     const encodedTitle = encodeURIComponent(title);
 
     const res = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
@@ -18,6 +18,7 @@ async function sendPush(title, message, tags = '') {
         'Title':        encodedTitle,
         'Tags':         tags,
         'Priority':     'high',
+        'Click':        `${APP_URL}${path}`, // ← opens your app when tapped
         'Content-Type': 'text/plain; charset=utf-8',
       },
       body: message,
@@ -43,8 +44,9 @@ function notifyNewSignal(signal) {
 
   const title   = `New ${action} Signal - ${signal.pair}`;
   const message = `Entry: ${entry} | SL: ${signal.sl ?? '-'} | TP1: ${signal.tp1 ?? '-'} | TP2: ${signal.tp2 ?? '-'}`;
+  const path    = `/signal.html?id=${signal.id}`; // opens exact signal detail
 
-  return sendPush(title, message, emoji);
+  return sendPush(title, message, emoji, path);
 }
 
 function notifyManual(title, message) {
