@@ -8,20 +8,56 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>GoldBullsFX — Live Signals</title>
   <link rel="stylesheet" href="css/style.css" />
-  <!-- OneSignal Push Notifications -->
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-messaging-compat.js"></script>
   <script>
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function(OneSignal) {
-      await OneSignal.init({
-        appId: "0205ff57-e1f0-43e5-a7ad-5f4256f463c8",   // ← replace with your App ID
-        notifyButton: { enable: true },    // floating bell icon for users to subscribe
-      });
+    firebase.initializeApp({
+      apiKey:            "AIzaSyD3z4gPaTzVigmBQQvG_cTVPpQDC_mXJQ4",
+      authDomain:        "goldbullsfx-125e0.firebaseapp.com",
+      projectId:         "goldbullsfx-125e0",
+      storageBucket:     "goldbullsfx-125e0.firebasestorage.app",
+      messagingSenderId: "384063050053",
+      appId:             "1:384063050053:web:889dc7ae5e72db2aa02e2c"
+    });
+ 
+    const messaging = firebase.messaging();
+ 
+    // Request permission and subscribe to 'signals' topic
+    async function initNotifications() {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+ 
+        const token = await messaging.getToken({
+          vapidKey: 'BFcibFgttZe2AmIz9ihmQqwRIP4P_AsGy6dDvyfcyitSWrpUjqDLqNxS6wfcQJxtRMgaf7pYII9P8cxBhvdYkIA' // ← we'll get this next
+        });
+ 
+        if (token) {
+          // Subscribe token to 'signals' topic via your backend
+          await fetch('goldbullsfx-production.up.railway.app/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          console.log('Subscribed to signals topic');
+        }
+      } catch (err) {
+        console.error('Notification setup failed:', err);
+      }
+    }
+ 
+    // Handle foreground notifications
+    messaging.onMessage(function(payload) {
+      const { title, body } = payload.notification;
+      if (Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/icon-192.png' });
+      }
     });
   </script>
 </head>
 <body>
-
+ 
   <!-- Top bar -->
   <nav class="topbar">
     <a class="logo" href="index.html">Gold<span>BullsFX</span></a>
@@ -30,7 +66,7 @@
       <a href="vip.html">VIP</a>
     </div>
   </nav>
-
+ 
   <!-- Page content -->
   <main class="page">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
@@ -38,56 +74,27 @@
       <span class="live-dot">Live</span>
     </div>
     <p class="page-sub">XAUUSD · Auto-updated · Tap a card for full details</p>
-
+ 
     <!-- Signal cards injected here by app.js -->
     <div id="feed"></div>
   </main>
-
+ 
   <!-- Footer -->
   <footer style="text-align:center;padding:24px 16px 40px;font-size:0.75rem;color:#7a7870;">
-    <a href="ntfy://goldbullsfx-x7k29m" id="notif-btn" style="
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      background:rgba(201,168,76,0.1);
-      border:1px solid #c9a84c;
-      color:#c9a84c;
-      padding:10px 20px;
-      border-radius:8px;
-      text-decoration:none;
-      font-size:0.85rem;
-      font-weight:600;
-      margin-bottom:16px;
-    ">🔔 Enable Signal Notifications</a>
-    <br/>
-    <span style="font-size:0.72rem;color:#555;display:block;margin-bottom:12px;">
-      Tap above · Install <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" style="color:#7a7870;text-decoration:underline;">Ntfy app</a> if prompted · Get alerts instantly
-    </span>
     GoldBullsFX &nbsp;·&nbsp;
     <a href="privacy.html" style="color:#7a7870;text-decoration:underline;">Privacy Policy</a>
     &nbsp;·&nbsp; For informational purposes only. Not financial advice.
   </footer>
-
-  <script>
-    // If ntfy app not installed, fall back to browser subscription page
-    const btn = document.getElementById('notif-btn');
-    btn.addEventListener('click', function(e) {
-      e.preventDefault();
-      // Try to open ntfy app directly
-      window.location = 'ntfy://goldbullsfx-x7k29m';
-      // After 1.5s if app didn't open, go to web subscribe page
-      setTimeout(() => {
-        window.location = 'https://ntfy.sh/goldbullsfx-x7k29m';
-      }, 1500);
-    });
-  </script>
-
+ 
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <!-- Your config (replace keys inside this file) -->
   <script src="js/supabase-client.js"></script>
-  <!-- Feed logic -->
   <script src="js/app.js"></script>
+ 
+  <!-- Init FCM notifications after page loads -->
+  <script>
+    window.addEventListener('load', initNotifications);
+  </script>
 
   <script>
   // Handle Android back button — go back instead of closing app
@@ -99,5 +106,9 @@
   }, false);
 </script>
 
+</body>
+</html>
+
+  
 </body>
 </html>
