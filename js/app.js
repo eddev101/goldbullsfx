@@ -169,7 +169,7 @@ async function loadSignals() {
     feed.innerHTML = `
       <div class="empty">
         <div class="empty-icon">📭</div>
-        <p>No signals yet.</p>
+        <p>No signals yet. Forward a signal to the bot to get started.</p>
       </div>
     `;
     return;
@@ -200,42 +200,10 @@ function refreshStatusBadges() {
   });
 }
 
-// ── Auto push when new signal arrives ────────────────────────────────────
-async function pushNewSignal(signal) {
-  const action  = signal.action === 'BUY' ? '🟢 BUY' : '🔴 SELL';
-  const entry   = (signal.entry_high && signal.entry_low)
-    ? `${signal.entry_high} – ${signal.entry_low}`
-    : signal.entry_high ?? signal.entry_low ?? '—';
-  const title   = `${action} Signal — ${signal.pair}`;
-  const message = `Entry: ${entry} | SL: ${signal.sl ?? '—'} | TP1: ${signal.tp1 ?? '—'} | TP2: ${signal.tp2 ?? '—'}`;
-
-  try {
-    await fetch('https://api.onesignal.com/notifications', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer os_v2_org_zk5zynj43ze7teh7pe2hi4iws7t2j7xi2grulbuicuw2fa2qtl2jhjlo3hjx6yxokm5qrmvqwz72khjep27cf6trzcf62fscuhqfrly`,
-      },
-      body: JSON.stringify({
-        app_id:            '0205ff57-e1f0-43e5-a7ad-5f4256f463c8',
-        target_channel:    'push',
-        included_segments: ['All'],
-        headings:          { en: title },
-        contents:          { en: message },
-      }),
-    });
-  } catch (e) {
-    console.error('Push failed:', e);
-  }
-}
-
 // ── Realtime: new signals pop in instantly ────────────────────────────────
 sb.channel('signals-feed')
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'signals' }, (payload) => {
     allSignals.unshift(payload.new);
-
-    // 🔔 Push notification to all users
-    pushNewSignal(payload.new);
     const newCard = document.createElement('div');
     newCard.innerHTML = renderCard(payload.new);
     const card = newCard.firstElementChild;
