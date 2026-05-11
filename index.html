@@ -43,7 +43,7 @@
  
         if (token) {
           console.log('FCM token:', token);
-         await fetch('goldbullsfx-production.up.railway.app/api/subscribe', {
+         await fetch('https://goldbullsfx-production.up.railway.app/api/subscribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token }),
