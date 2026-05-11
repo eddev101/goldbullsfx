@@ -12,10 +12,33 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Show notification when app is in background
 messaging.onBackgroundMessage(function(payload) {
   const { title, body } = payload.notification;
   self.registration.showNotification(title, {
     body,
-    icon: '/icon-192.png',
+    icon:  '/icon-192.png',
+    badge: '/icon-192.png',
+    data:  { url: payload.fcmOptions?.link || 'https://goldbullsfx.pages.dev' },
   });
+});
+
+// Open app when notification is tapped
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  const url = event.notification.data?.url || 'https://goldbullsfx.pages.dev';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // If app is already open, focus it
+      for (const client of clientList) {
+        if (client.url === url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
+  );
 });
