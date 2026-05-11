@@ -23,19 +23,27 @@
  
     const messaging = firebase.messaging();
  
-    // Request permission and subscribe to 'signals' topic
     async function initNotifications() {
       try {
         const permission = await Notification.requestPermission();
-        if (permission !== 'granted') return;
+        if (permission !== 'granted') {
+          console.log('Notification permission denied');
+          return;
+        }
+ 
+        // Register service worker and wait until it's active
+        const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        await navigator.serviceWorker.ready;
+        console.log('Service worker active:', swReg);
  
         const token = await messaging.getToken({
-          vapidKey: 'BFcibFgttZe2AmIz9ihmQqwRIP4P_AsGy6dDvyfcyitSWrpUjqDLqNxS6wfcQJxtRMgaf7pYII9P8cxBhvdYkIA' // ← we'll get this next
+          vapidKey: 'BFcibFgttZe2AmIz9ihmQqwRIP4P_AsGy6dDvyfcyitSWrpUjqDLqNxS6wfcQJxtRMgaf7pYII9P8cxBhvdYkIA',
+          serviceWorkerRegistration: swReg,
         });
  
         if (token) {
-          // Subscribe token to 'signals' topic via your backend
-          await fetch('goldbullsfx-production.up.railway.app/api/subscribe', {
+          console.log('FCM token:', token);
+         await fetch('goldbullsfx-production.up.railway.app/api/subscribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token }),
@@ -47,7 +55,6 @@
       }
     }
  
-    // Handle foreground notifications
     messaging.onMessage(function(payload) {
       const { title, body } = payload.notification;
       if (Notification.permission === 'granted') {
