@@ -659,42 +659,29 @@
     });
 
     // ── Notifications ─────────────────────────────────────────────────────
-    const ONESIGNAL_APP_ID  = '0205ff57-e1f0-43e5-a7ad-5f4256f463c8';
-    const ONESIGNAL_API_KEY = 'os_v2_org_zk5zynj43ze7teh7pe2hi4iws7t2j7xi2grulbuicuw2fa2qtl2jhjlo3hjx6yxokm5qrmvqwz72khjep27cf6trzcf62fscuhqfrly';
+    const BACKEND_URL = 'https://goldbullsfx-production.up.railway.app'; // your Railway URL
 
     async function sendPush(title, message) {
       try {
-        const res = await fetch('https://api.onesignal.com/notifications', {
+        const res = await fetch(`${BACKEND_URL}/api/notify`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${ONESIGNAL_API_KEY}`,
-          },
-          body: JSON.stringify({
-            app_id:            ONESIGNAL_APP_ID,
-            target_channel:    'push',
-            included_segments: ['All'],
-            headings:          { en: title },
-            contents:          { en: message },
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'custom', title, message }),
         });
         const data = await res.json();
-        if (data.errors) {
-          toast(`OneSignal error: ${data.errors[0]}`, 'error');
-        } else {
-          toast(`📲 Sent to ${data.recipients} users!`);
-        }
+        if (!data.ok) throw new Error(data.error || 'Unknown error');
+        toast('📲 Notification sent!');
       } catch (err) {
         toast(`Error: ${err.message}`, 'error');
       }
     }
 
     const TEMPLATES = {
-      tp1:  { title: '🎯 TP1 Hit! — XAUUSD',     message: 'Take Profit 1 reached. Consider securing profits.' },
-      tp2:  { title: '🎯 TP2 Hit! — XAUUSD',     message: 'Take Profit 2 reached. Full target achieved!' },
-      sl:   { title: '❌ Stop Loss Hit — XAUUSD', message: 'Stop loss triggered. Stay disciplined.' },
-      be:   { title: '🔒 Move SL to BE — XAUUSD',message: 'Move stop loss to breakeven to protect position.' },
-      close:{ title: '🔔 Signal Closed — XAUUSD', message: 'Trade closed. Check the app for results.' },
+      tp1:  { title: '🎯 TP1 Hit - XAUUSD',      message: 'Take Profit 1 reached. Consider securing profits.' },
+      tp2:  { title: '🎯 TP2 Hit - XAUUSD',      message: 'Take Profit 2 reached. Full target achieved!' },
+      sl:   { title: '❌ Stop Loss Hit - XAUUSD', message: 'Stop loss triggered. Stay disciplined.' },
+      be:   { title: '🔒 Move SL to BE - XAUUSD',message: 'Move stop loss to breakeven to protect position.' },
+      close:{ title: '🔔 Signal Closed - XAUUSD', message: 'Trade closed. Check the app for results.' },
     };
 
     async function sendTemplate(key) {
