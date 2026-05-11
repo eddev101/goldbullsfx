@@ -41,9 +41,11 @@ async function sendPush(title, body, path = '/') {
         message: {
           topic: 'signals',
           notification: { title, body },
+          data: { url: `${APP_URL}${path}` },
           android: {
             notification: {
               click_action: 'FLUTTER_NOTIFICATION_CLICK',
+              icon: 'ic_launcher',
             },
           },
           webpush: {
