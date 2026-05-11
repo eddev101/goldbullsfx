@@ -10,7 +10,7 @@ firebase.initializeApp({
   appId:             "1:384063050053:web:889dc7ae5e72db2aa02e2c"
 });
 
-const messaging = firebase.getMessaging();
+const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(function(payload) {
   const { title, body } = payload.notification;
