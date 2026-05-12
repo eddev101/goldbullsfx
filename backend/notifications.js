@@ -1,4 +1,4 @@
-/**
+here's my backend; /**
  * notifications.js
  * Sends push notifications via Firebase Cloud Messaging (FCM v1 API).
  */
@@ -27,86 +27,45 @@ async function getAccessToken() {
 
 // ── Core send function ─────────────────────────────────────────────────────
 async function sendPush(title, body, path = '/') {
-
   try {
-
     const accessToken = await getAccessToken();
+    const url = `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send`;
 
-    const url =
-      `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send`;
-
-    const response = await fetch(url, {
+    const res = await fetch(url, {
       method: 'POST',
-
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type':  'application/json',
         'Authorization': `Bearer ${accessToken}`,
       },
-
       body: JSON.stringify({
-
         message: {
-
           topic: 'signals',
-
-          notification: {
-            title,
-            body
-          },
-
-          data: {
-            url: `${APP_URL}/index.html`
-          },
-
+          notification: { title, body },
+          data: { url: `${APP_URL}${path}` },
           android: {
-
-            priority: 'HIGH',
-
             notification: {
-              channel_id: 'signals',
-              sound: 'default',
+              click_action: 'FLUTTER_NOTIFICATION_CLICK',
               icon: 'ic_launcher',
-              click_action: 'OPEN_ACTIVITY_1'
-            }
-
-          },
-
-          webpush: {
-
-            notification: {
-              icon: '/icons/icon-192.png'
             },
-
+          },
+          webpush: {
             fcm_options: {
-              link: `${APP_URL}/index.html`
-            }
-
-          }
-
-        }
-
+              link: `${APP_URL}${path}`,
+            },
+          },
+        },
       }),
-
     });
 
-    const data = await response.json();
-
+    const data = await res.json();
     if (data.error) {
-
-      console.error('FCM Error:', data.error);
-
+      console.error('FCM error:', data.error.message);
     } else {
-
-      console.log(`📲 Push sent: ${title}`);
-
+      console.log(`📲 FCM push sent: "${title}"`);
     }
-
   } catch (err) {
-
-    console.error('Push send failed:', err);
-
+    console.error('Failed to send FCM push:', err.message);
   }
-
 }
 
 // ── Signal notifications ───────────────────────────────────────────────────
