@@ -27,45 +27,86 @@ async function getAccessToken() {
 
 // ── Core send function ─────────────────────────────────────────────────────
 async function sendPush(title, body, path = '/') {
-  try {
-    const accessToken = await getAccessToken();
-    const url = `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send`;
 
-    const res = await fetch(url, {
+  try {
+
+    const accessToken = await getAccessToken();
+
+    const url =
+      `https://fcm.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/messages:send`;
+
+    const response = await fetch(url, {
       method: 'POST',
+
       headers: {
-        'Content-Type':  'application/json',
+        'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
       },
+
       body: JSON.stringify({
+
         message: {
+
           topic: 'signals',
-          notification: { title, body },
-          data: { url: `${APP_URL}${path}` },
+
+          notification: {
+            title,
+            body
+          },
+
+          data: {
+            url: `${APP_URL}/index.html`
+          },
+
           android: {
+
+            priority: 'HIGH',
+
             notification: {
-              click_action: 'FLUTTER_NOTIFICATION_CLICK',
+              channel_id: 'signals',
+              sound: 'default',
               icon: 'ic_launcher',
-            },
+              click_action: 'OPEN_ACTIVITY_1'
+            }
+
           },
+
           webpush: {
-            fcm_options: {
-              link: `${APP_URL}${path}`,
+
+            notification: {
+              icon: '/icons/icon-192.png'
             },
-          },
-        },
+
+            fcm_options: {
+              link: `${APP_URL}/index.html`
+            }
+
+          }
+
+        }
+
       }),
+
     });
 
-    const data = await res.json();
+    const data = await response.json();
+
     if (data.error) {
-      console.error('FCM error:', data.error.message);
+
+      console.error('FCM Error:', data.error);
+
     } else {
-      console.log(`📲 FCM push sent: "${title}"`);
+
+      console.log(`📲 Push sent: ${title}`);
+
     }
+
   } catch (err) {
-    console.error('Failed to send FCM push:', err.message);
+
+    console.error('Push send failed:', err);
+
   }
+
 }
 
 // ── Signal notifications ───────────────────────────────────────────────────
