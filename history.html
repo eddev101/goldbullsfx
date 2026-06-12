@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0b" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>History — GoldBullsFX</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    /* ── Stats summary bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 12px;
+      text-align: center;
+    }
+    .stat-val {
+      font-family: 'DM Mono', monospace;
+      font-size: 1.3rem;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 0.68rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    /* ── Filter tabs ── */
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .filter-tab {
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: var(--bg2);
+      transition: all 0.2s;
+    }
+    .filter-tab.active {
+      background: rgba(201,168,76,0.1);
+      border-color: var(--gold-dim);
+      color: var(--gold);
+    }
+
+    /* ── History card ── */
+    .history-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 10px;
+      text-decoration: none;
+      display: block;
+      transition: border-color 0.2s;
+    }
+    .history-card:hover { border-color: var(--gold-dim); }
+    .history-card.win  { border-left: 3px solid var(--green); }
+    .history-card.loss { border-left: 3px solid var(--red); }
+
+    .history-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .history-left { display: flex; align-items: center; gap: 8px; }
+
+    .pips {
+      font-family: 'DM Mono', monospace;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .pips.pos { color: var(--green); }
+    .pips.neg { color: var(--red); }
+
+    .history-numbers {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .history-numbers .num-block label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .history-numbers .num-block span {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.88rem;
+      color: var(--text);
+    }
+    .history-date {
+      font-size: 0.72rem;
+      color: var(--muted);
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 480px) {
+      .stats-bar { grid-template-columns: repeat(2, 1fr); }
+      .history-numbers { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="topbar">
+    <a class="logo" href="index.html">Gold<span>BullsFX</span></a>
+    <div class="nav-links">
+      <a href="index.html">Signals</a>
+      <a href="history.html" class="active">History</a>
+      <a href="vip.html">VIP</a>
+    </div>
+  </nav>
+
+  <main class="page">
+    <h1 class="page-title">Trade History</h1>
+    <p class="page-sub">All closed XAUUSD trades</p>
+
+    <!-- Stats summary -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <span class="stat-val" id="stat-total" style="color:var(--gold)">—</span>
+        <span class="stat-label">Total</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val" id="stat-winrate" style="color:var(--green)">—</span>
+        <span class="stat-label">Win Rate</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val" id="stat-wins" style="color:var(--green)">—</span>
+        <span class="stat-label">Wins</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-val" id="stat-pips" id="stat-pips">—</span>
+        <span class="stat-label">Total Pips</span>
+      </div>
+    </div>
+
+    <!-- Filter tabs -->
+    <div class="filter-tabs">
+      <div class="filter-tab active" data-filter="all">All</div>
+      <div class="filter-tab" data-filter="Win">Wins</div>
+      <div class="filter-tab" data-filter="Loss">Losses</div>
+      <div class="filter-tab" data-filter="BUY">Buy</div>
+      <div class="filter-tab" data-filter="SELL">Sell</div>
+    </div>
+
+    <!-- Trade list -->
+    <div id="history-feed">
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+      <div class="skeleton"></div>
+    </div>
+
+  </main>
+
+  <footer style="text-align:center;padding:24px 16px 40px;font-size:0.75rem;color:#7a7870;">
+    GoldBullsFX &nbsp;·&nbsp;
+    <a href="privacy.html" style="color:#7a7870;text-decoration:underline;">Privacy Policy</a>
+    &nbsp;·&nbsp; For informational purposes only. Not financial advice.
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-client.js"></script>
+  <script>
+
+    let allTrades = [];
+    let currentFilter = 'all';
+
+    // ── Auto-calculate pips from signal data ───────────────────────────────
+    function calcPips(signal) {
+      // If manually set in admin, use that
+      if (signal.profit_loss != null) return signal.profit_loss;
+
+      const entry = signal.entry_high != null
+        ? (signal.entry_high + (signal.entry_low ?? signal.entry_high)) / 2
+        : null;
+
+      if (!entry) return null;
+
+      if (signal.status === 'TP2 Hit' && signal.tp2 != null) {
+        return signal.action === 'BUY'
+          ? Math.round((signal.tp2 - entry) * 10) / 10
+          : Math.round((entry - signal.tp2) * 10) / 10;
+      }
+      if ((signal.status === 'TP1 Hit' || signal.status === 'TP Hit') && signal.tp1 != null) {
+        return signal.action === 'BUY'
+          ? Math.round((signal.tp1 - entry) * 10) / 10
+          : Math.round((entry - signal.tp1) * 10) / 10;
+      }
+      if (signal.status === 'SL Hit' && signal.sl != null) {
+        return signal.action === 'BUY'
+          ? Math.round((signal.sl - entry) * 10) / 10
+          : Math.round((entry - signal.sl) * 10) / 10;
+      }
+      return null;
+    }
+
+    function fmt(val) { return val != null ? val : '—'; }
+
+    function formatDate(str) {
+      if (!str) return '—';
+      return new Date(str).toLocaleString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+    }
+
+    function renderCard(signal) {
+      const pips     = calcPips(signal);
+      const isWin    = signal.result === 'Win' || 
+                       signal.status === 'TP1 Hit' || 
+                       signal.status === 'TP2 Hit' ||
+                       signal.status === 'TP Hit' ||
+                       (pips != null && pips > 0);
+      const isLoss   = signal.result === 'Loss' || 
+                       signal.status === 'SL Hit' ||
+                       (pips != null && pips < 0);
+      const cardClass = isWin ? 'win' : isLoss ? 'loss' : '';
+      const pipsClass = pips == null ? '' : pips >= 0 ? 'pos' : 'neg';
+      const pipsStr   = pips == null ? '—' : (pips >= 0 ? '+' : '') + pips + ' pips';
+
+      const entryStr = (signal.entry_high != null && signal.entry_low != null)
+        ? `${signal.entry_high}–${signal.entry_low}`
+        : fmt(signal.entry_high ?? signal.entry_low);
+
+      const statusMap = {
+        'TP1 Hit': 'badge-tp', 'TP2 Hit': 'badge-tp', 'TP Hit': 'badge-tp',
+        'SL Hit': 'badge-sl', 'Closed': 'badge-closed',
+      };
+
+      return `
+        <a class="history-card ${cardClass}" href="signal.html?id=${signal.id}">
+          <div class="history-top">
+            <div class="history-left">
+              <span class="pair" style="font-family:'DM Mono',monospace;color:var(--gold)">${signal.pair}</span>
+              <span class="badge ${signal.action === 'BUY' ? 'badge-buy' : 'badge-sell'}">${signal.action}</span>
+              <span class="badge ${statusMap[signal.status] || 'badge-closed'}">${signal.status}</span>
+            </div>
+            <span class="pips ${pipsClass}">${pipsStr}</span>
+          </div>
+          <div class="history-numbers">
+            <div class="num-block"><label>Entry</label><span>${entryStr}</span></div>
+            <div class="num-block"><label>SL</label><span>${fmt(signal.sl)}</span></div>
+            <div class="num-block"><label>TP1</label><span>${fmt(signal.tp1)}</span></div>
+            <div class="num-block"><label>TP2</label><span>${fmt(signal.tp2)}</span></div>
+          </div>
+          <div class="history-date">📅 ${formatDate(signal.created_at)}</div>
+        </a>
+      `;
+    }
+
+    function updateStats(trades) {
+      const total   = trades.length;
+      const wins    = trades.filter(s =>
+        s.result === 'Win' || s.status === 'TP1 Hit' || s.status === 'TP2 Hit' || s.status === 'TP Hit'
+      ).length;
+      const losses  = trades.filter(s => s.result === 'Loss' || s.status === 'SL Hit').length;
+      const winrate = total > 0 ? Math.round((wins / (wins + losses || 1)) * 100) : 0;
+      const totalPips = trades.reduce((sum, s) => {
+        const p = calcPips(s);
+        return sum + (p ?? 0);
+      }, 0);
+
+      document.getElementById('stat-total').textContent   = total;
+      document.getElementById('stat-winrate').textContent = winrate + '%';
+      document.getElementById('stat-wins').textContent    = wins;
+
+      const pipsEl = document.getElementById('stat-pips');
+      pipsEl.textContent = (totalPips >= 0 ? '+' : '') + Math.round(totalPips * 10) / 10;
+      pipsEl.style.color = totalPips >= 0 ? 'var(--green)' : 'var(--red)';
+    }
+
+    function renderFeed(filter) {
+      const feed = document.getElementById('history-feed');
+      let trades = allTrades;
+
+      if (filter === 'Win') {
+        trades = trades.filter(s =>
+          s.result === 'Win' || s.status === 'TP1 Hit' || s.status === 'TP2 Hit' || s.status === 'TP Hit'
+        );
+      } else if (filter === 'Loss') {
+        trades = trades.filter(s => s.result === 'Loss' || s.status === 'SL Hit');
+      } else if (filter === 'BUY' || filter === 'SELL') {
+        trades = trades.filter(s => s.action === filter);
+      }
+
+      if (!trades.length) {
+        feed.innerHTML = `
+          <div class="empty">
+            <div class="empty-icon">📭</div>
+            <p>No closed trades yet.</p>
+          </div>`;
+        return;
+      }
+
+      feed.innerHTML = trades.map(renderCard).join('');
+    }
+
+    async function loadHistory() {
+      const { data, error } = await sb
+        .from('signals')
+        .select('*')
+        .in('status', ['TP1 Hit', 'TP2 Hit', 'TP Hit', 'SL Hit', 'Closed'])
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        document.getElementById('history-feed').innerHTML =
+          `<div class="error-banner">Failed to load: ${error.message}</div>`;
+        return;
+      }
+
+      allTrades = data || [];
+      updateStats(allTrades);
+      renderFeed(currentFilter);
+    }
+
+    // ── Filter tabs ──────────────────────────────────────────────────────
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentFilter = tab.dataset.filter;
+        renderFeed(currentFilter);
+      });
+    });
+
+    loadHistory();
+  </script>
+
+</body>
+</html>
